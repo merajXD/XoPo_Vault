@@ -291,6 +291,38 @@ fn metadata_round_trips_and_can_be_removed() {
     assert_eq!(VaultMeta::get(db.connection(), "name").expect("get"), None);
 }
 
+#[test]
+fn two_connections_do_not_lose_each_others_writes() {
+    let vault = TempVault::new("concurrent");
+    let mut first = vault.open();
+    let wallet_a = sample_wallet();
+    WalletRepository::save(first.connection_mut(), &wallet_a).expect("save first wallet");
+
+    let mut second = Database::open(vault.path(), &TempVault::key()).expect("second connection");
+    second.migrate().expect("migrate second connection");
+    let mut wallet_b = Wallet::new(WalletKind::WatchOnly, label("Watch"), timestamp());
+    wallet_b
+        .add_account(
+            NetworkId::Bitcoin,
+            label("Watched"),
+            Address::parse(
+                NetworkId::Bitcoin,
+                "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+            )
+            .expect("address"),
+            None,
+            timestamp(),
+        )
+        .expect("account");
+    WalletRepository::save(second.connection_mut(), &wallet_b).expect("save second wallet");
+
+    assert_eq!(
+        WalletRepository::count(first.connection()).expect("count"),
+        2
+    );
+    assert!(WalletRepository::load(first.connection(), wallet_b.id()).is_ok());
+}
+
 fn contains(haystack: &[u8], needle: &[u8]) -> bool {
     haystack
         .windows(needle.len())

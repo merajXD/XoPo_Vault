@@ -4,11 +4,12 @@ A local-first, privacy-focused digital asset vault for **Windows** and **Android
 
 XoPo Vault is not a dashboard with a login screen. It is meant to be a personal digital vault: multiple networks, multiple wallets, real balances, encrypted local storage, encrypted `.xdvault` backups, and direct device-to-device synchronization over the local network — with no mandatory cloud.
 
-> **Development status: Phase 2 (encrypted storage).**
-> The domain model, its validation rules and the in-memory vault aggregate are implemented and tested,
-> and wallets/accounts now persist in a SQLCipher-encrypted SQLite file with versioned migrations.
+> **Development status: Phase 2 complete (encrypted storage).**
+> The domain model and its validation rules are implemented and tested, and the whole vault — name,
+> wallets, accounts — persists in a SQLCipher-encrypted SQLite file with versioned migrations.
 > There is still **no key derivation, no password handling, no signing, no balance retrieval and no interface**.
-> Do not use this project with real funds. Nothing in the current code can hold or move value.
+> Do not use this project with real funds. Nothing in the current code can hold or move value, and the
+> key that unlocks the database must still be supplied by a caller that does not exist yet.
 
 ## Principles
 

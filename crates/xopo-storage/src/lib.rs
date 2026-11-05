@@ -20,6 +20,7 @@ mod error;
 mod key;
 mod migrations;
 mod settings;
+mod vault_repo;
 mod wallets;
 
 pub use db::Database;
@@ -27,4 +28,5 @@ pub use error::StorageError;
 pub use key::DatabaseKey;
 pub use migrations::SCHEMA_VERSION;
 pub use settings::VaultMeta;
+pub use vault_repo::VaultRepository;
 pub use wallets::WalletRepository;

@@ -25,6 +25,10 @@ pub enum StorageError {
     #[error(transparent)]
     Domain(#[from] DomainError),
 
+    /// A vault-level invariant was violated while rebuilding the aggregate.
+    #[error(transparent)]
+    Vault(#[from] xopo_core::VaultError),
+
     /// The file exists but the supplied key does not open it. A wrong key and a
     /// damaged file are reported the same way because SQLCipher does not
     /// distinguish them, and guessing would be misleading.

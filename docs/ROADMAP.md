@@ -8,7 +8,7 @@ Status is updated as work actually lands. A phase is complete only when it compi
 | --- | --- | --- |
 | 0 | Repository and architecture foundation | **Complete** |
 | 1 | Rust core foundation (domain model, validation, tests) | **Complete** |
-| 2 | Storage: SQLite schema, migrations, repositories | **In progress** — storage foundation landed |
+| 2 | Storage: SQLite schema, migrations, repositories | **Complete** (asset/balance/transaction repositories follow their data sources) |
 | 3 | Wallet architecture: HD derivation, watch-only, adapters trait | Planned |
 | 4 | Security and encrypted `.xdvault` backup | Planned |
 | 5 | Local pairing and synchronization | Planned |
@@ -53,21 +53,22 @@ Implemented in `xopo-domain` and `xopo-core`:
 
 No key generation, no mnemonic handling, no signing, no balances, no transactions, no persistence, no encryption, no networking, no UI. Nothing here can hold or move value.
 
-## Phase 2 — Storage — in progress
+## Phase 2 — Storage — complete
 
 - [x] Decide SQLCipher vs field-level encryption → SQLCipher (ADR-008).
 - [x] `xopo-storage`: connection setup, key verification, pragmas, error type.
 - [x] Migration runner with `user_version`, forward-only steps, pre-migration copy.
 - [x] Schema v1 as specified in `docs/DATABASE.md` (one documented deviation: nullable `key_ref`).
 - [x] Wallet and account repository: transactional save, load, list, count, delete.
+- [x] Whole-vault repository: atomic save of name, creation time and every wallet; rebuild through `Vault::restore`.
 - [x] Vault metadata repository.
 - [x] Integrity checks (`quick_check` on open, `foreign_key_check` after migrations).
-- [x] Corruption, wrong-key, newer-schema, foreign-key and encryption-at-rest tests.
-- [ ] Repositories for assets, balances and transactions.
-- [ ] Two-connection concurrency test; automated test for the pre-migration copy.
-- [ ] Wire storage into `xopo-core` so the vault aggregate can be loaded and saved as a whole.
+- [x] Corruption, wrong-key, newer-schema, foreign-key, encryption-at-rest and two-connection tests.
+- [x] Wire storage into `xopo-core` so the vault aggregate can be loaded and saved as a whole.
+- [ ] Repositories for assets, balances and transactions — deferred to Phases 3 and 8, which produce that data; inventing rows with no source would be fake data.
+- [ ] Automated test for the pre-migration copy (the copy itself is implemented).
 
-Exit criteria: creating a vault, adding wallets/accounts, reopening the process and reading identical aggregates; corrupt file produces a clear error, never an empty database. **The reopen criterion passes today for wallets and accounts**; the aggregate wiring is the remaining piece.
+Exit criteria: creating a vault, adding wallets/accounts, reopening the process and reading identical aggregates; a corrupt file produces a clear error, never an empty database. **Met**: four vault-level persistence tests cover it, and damaged files are rejected.
 
 ## Phase 3 — Wallet architecture
 

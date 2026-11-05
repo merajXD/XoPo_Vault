@@ -9,6 +9,7 @@ authors.workspace = true
 repository.workspace = true
 
 [dependencies]
+xopo-core = { workspace = true }
 xopo-domain = { workspace = true }
 thiserror = { workspace = true }
 rusqlite = { version = "0.32", features = ["bundled-sqlcipher-vendored-openssl"] }

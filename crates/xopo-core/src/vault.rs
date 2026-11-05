@@ -1,9 +1,11 @@
 //! The in-memory vault aggregate.
 //!
 //! [`Vault`] owns the user's wallets and enforces cross-wallet rules that a
-//! single [`Wallet`] cannot see. It is intentionally storage-free: the storage
-//! phase will add a repository that persists exactly these aggregates, and the
-//! synchronization phase will add revision tracking. Neither is simulated here.
+//! single [`Wallet`] cannot see. It stays storage-free: `xopo-storage` provides
+//! `VaultRepository`, which persists exactly these aggregates. Revision tracking
+//! for Local Sync is a later phase and is not simulated here.
+
+use std::collections::HashSet;
 
 use thiserror::Error;
 
@@ -30,13 +32,27 @@ pub enum VaultError {
         /// The identifier that was requested.
         account_id: AccountId,
     },
+    /// Two wallets claim the same identifier. This cannot happen through the
+    /// API; it means stored or synced data is inconsistent.
+    #[error("wallet {wallet_id} appears twice in the vault")]
+    DuplicateWalletId {
+        /// The duplicated identifier.
+        wallet_id: WalletId,
+    },
+    /// Two accounts claim the same identifier, so one of them would be
+    /// unreachable.
+    #[error("account {account_id} appears twice in the vault")]
+    DuplicateAccountId {
+        /// The duplicated identifier.
+        account_id: AccountId,
+    },
 }
 
 /// A user's set of wallets.
 ///
-/// The vault is created once per unlocked session. It currently lives only in
-/// memory; nothing is written to disk and nothing is encrypted, so it must not
-/// be treated as durable storage.
+/// The vault is created once per unlocked session. Persisting it is the job of
+/// `xopo-storage::VaultRepository`; this type performs no I/O and holds no
+/// secret material.
 #[derive(Clone, Debug)]
 pub struct Vault {
     name: Label,
@@ -53,6 +69,42 @@ impl Vault {
             created_at,
             wallets: Vec::new(),
         }
+    }
+
+    /// Rebuilds a vault from stored wallets, re-checking the invariants that
+    /// only the whole set can violate.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`VaultError::DuplicateWalletId`] or
+    /// [`VaultError::DuplicateAccountId`] when the same identity appears twice.
+    #[must_use = "a vault must be checked before it is used"]
+    pub fn restore(
+        name: Label,
+        created_at: Timestamp,
+        wallets: Vec<Wallet>,
+    ) -> Result<Self, VaultError> {
+        let mut wallet_ids: HashSet<WalletId> = HashSet::with_capacity(wallets.len());
+        let mut account_ids: HashSet<AccountId> = HashSet::new();
+        for wallet in &wallets {
+            if !wallet_ids.insert(wallet.id()) {
+                return Err(VaultError::DuplicateWalletId {
+                    wallet_id: wallet.id(),
+                });
+            }
+            for account in wallet.accounts() {
+                if !account_ids.insert(account.id()) {
+                    return Err(VaultError::DuplicateAccountId {
+                        account_id: account.id(),
+                    });
+                }
+            }
+        }
+        Ok(Self {
+            name,
+            created_at,
+            wallets,
+        })
     }
 
     /// Vault display name.

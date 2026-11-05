@@ -7,11 +7,12 @@
 //!
 //! ## Current scope
 //!
-//! The in-memory [`Vault`] aggregate and its invariants. It is deliberately
-//! *not* a complete vault: there is no persistence, encryption, key handling,
-//! balance retrieval or network access yet. Those arrive with the storage,
-//! security, wallet and chain-adapter phases, and only then may the interface
-//! present them as available.
+//! The [`Vault`] aggregate and its invariants. Persistence, including
+//! encryption, lives in `xopo-storage`; this crate performs no I/O and holds no
+//! key material. It is still *not* a usable wallet: there is no key derivation,
+//! no signing, no balance retrieval and no network access yet. Those arrive with
+//! the wallet, security and chain-adapter phases, and only then may the
+//! interface present them as available.
 
 pub mod vault;
 

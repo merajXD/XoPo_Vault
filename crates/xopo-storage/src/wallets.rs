@@ -5,7 +5,7 @@
 //! is re-checked when data comes back out of the database. Storage never trusts
 //! its own rows.
 
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{params, Connection, OptionalExtension, Transaction};
 
 use xopo_domain::{
     Account, Address, DerivationPath, Label, NetworkId, Timestamp, Wallet, WalletId, WalletKind,
@@ -29,65 +29,7 @@ impl WalletRepository {
     /// and its accounts are never left half-written.
     pub fn save(conn: &mut Connection, wallet: &Wallet) -> Result<(), StorageError> {
         let transaction = conn.transaction()?;
-        let wallet_id = wallet.id().to_string();
-
-        transaction.execute(
-            "INSERT INTO wallets (id, label, kind, key_ref, created_at)
-             VALUES (?1, ?2, ?3, NULL, ?4)
-             ON CONFLICT(id) DO UPDATE SET
-                 label = excluded.label,
-                 kind = excluded.kind,
-                 created_at = excluded.created_at",
-            params![
-                wallet_id,
-                wallet.label().as_str(),
-                kind_text(wallet.kind()),
-                wallet.created_at().as_millis()
-            ],
-        )?;
-
-        for account in wallet.accounts() {
-            transaction.execute(
-                "INSERT INTO accounts
-                     (id, wallet_id, network_id, label, address, derivation, created_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-                 ON CONFLICT(id) DO UPDATE SET
-                     wallet_id = excluded.wallet_id,
-                     network_id = excluded.network_id,
-                     label = excluded.label,
-                     address = excluded.address,
-                     derivation = excluded.derivation,
-                     created_at = excluded.created_at",
-                params![
-                    account.id().to_string(),
-                    wallet_id,
-                    account.network().id(),
-                    account.label().as_str(),
-                    account.address().as_str(),
-                    account.derivation().map(ToString::to_string),
-                    account.created_at().as_millis()
-                ],
-            )?;
-        }
-
-        // Remove accounts that were deleted from the aggregate.
-        let kept: Vec<String> = wallet
-            .accounts()
-            .iter()
-            .map(|account| account.id().to_string())
-            .collect();
-        let mut statement = transaction.prepare("SELECT id FROM accounts WHERE wallet_id = ?1")?;
-        let stored: Vec<String> = statement
-            .query_map([&wallet_id], |row| row.get::<_, String>(0))?
-            .collect::<Result<_, _>>()?;
-        drop(statement);
-
-        for id in stored {
-            if !kept.contains(&id) {
-                transaction.execute("DELETE FROM accounts WHERE id = ?1", [&id])?;
-            }
-        }
-
+        save_in(&transaction, wallet)?;
         transaction.commit()?;
         Ok(())
     }
@@ -172,6 +114,72 @@ impl WalletRepository {
         let removed = conn.execute("DELETE FROM wallets WHERE id = ?1", [id.to_string()])?;
         Ok(removed > 0)
     }
+}
+
+/// Writes one wallet and its accounts inside an existing transaction.
+///
+/// Used by [`crate::VaultRepository`] so a whole vault is written atomically.
+pub(crate) fn save_in(transaction: &Transaction<'_>, wallet: &Wallet) -> Result<(), StorageError> {
+    let wallet_id = wallet.id().to_string();
+
+    transaction.execute(
+        "INSERT INTO wallets (id, label, kind, key_ref, created_at)
+         VALUES (?1, ?2, ?3, NULL, ?4)
+         ON CONFLICT(id) DO UPDATE SET
+             label = excluded.label,
+             kind = excluded.kind,
+             created_at = excluded.created_at",
+        params![
+            wallet_id,
+            wallet.label().as_str(),
+            kind_text(wallet.kind()),
+            wallet.created_at().as_millis()
+        ],
+    )?;
+
+    for account in wallet.accounts() {
+        transaction.execute(
+            "INSERT INTO accounts
+                 (id, wallet_id, network_id, label, address, derivation, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             ON CONFLICT(id) DO UPDATE SET
+                 wallet_id = excluded.wallet_id,
+                 network_id = excluded.network_id,
+                 label = excluded.label,
+                 address = excluded.address,
+                 derivation = excluded.derivation,
+                 created_at = excluded.created_at",
+            params![
+                account.id().to_string(),
+                wallet_id,
+                account.network().id(),
+                account.label().as_str(),
+                account.address().as_str(),
+                account.derivation().map(ToString::to_string),
+                account.created_at().as_millis()
+            ],
+        )?;
+    }
+
+    // Remove accounts that were deleted from the aggregate.
+    let kept: Vec<String> = wallet
+        .accounts()
+        .iter()
+        .map(|account| account.id().to_string())
+        .collect();
+    let mut statement = transaction.prepare("SELECT id FROM accounts WHERE wallet_id = ?1")?;
+    let stored: Vec<String> = statement
+        .query_map([&wallet_id], |row| row.get::<_, String>(0))?
+        .collect::<Result<_, _>>()?;
+    drop(statement);
+
+    for id in stored {
+        if !kept.contains(&id) {
+            transaction.execute("DELETE FROM accounts WHERE id = ?1", [&id])?;
+        }
+    }
+
+    Ok(())
 }
 
 struct StoredWallet {

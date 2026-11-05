@@ -36,7 +36,7 @@ Dependencies point **downward only**. The domain has no dependency on storage, n
 | --- | --- | --- |
 | `xopo-domain` | Value objects and entities with validation: `NetworkId`, `Asset`, `Amount`, `Address`, `DerivationPath`, `Wallet`, `Account`, errors, timestamps. No I/O. | Implemented (Phase 1) |
 | `xopo-core` | Application layer: the `Vault` aggregate over wallets/accounts; later the use cases that coordinate storage, security, backup and sync. | Started (in-memory aggregate) |
-| `xopo-storage` | SQLCipher connection and key verification, versioned schema and migrations, wallet/account/metadata repositories, transactions, integrity checks. | Implemented (Phase 2) |
+| `xopo-storage` | SQLCipher connection and key verification, versioned schema and migrations, whole-vault/wallet/account/metadata repositories, transactions, integrity checks. | Implemented (Phase 2) |
 | `xopo-wallet` | HD derivation and address generation, wallet creation/import, watch-only support, key-source abstraction. | Phase 3 |
 | `xopo-chain-adapters` | One independent adapter per network: address checksums, balance retrieval, transaction history, transaction construction. A shared `ChainAdapter` trait lives here. | Phase 3 and 8 |
 | `xopo-security` | Argon2id KDF, AEAD sealing/opening, key hierarchy, application lock, platform key protection, security events. | Phase 4 |
@@ -73,7 +73,9 @@ The storage layout will keep only wrapped key material (AEAD ciphertexts) and me
 
 ## Storage direction (Phase 2)
 
-SQLite with a versioned schema and forward-only migrations, one repository per aggregate, all writes inside explicit transactions. Details and the planned schema are in `docs/DATABASE.md`. The decision between SQLCipher (page-level encryption) and application-level field encryption is **open** and recorded in `docs/DATABASE.md`.
+SQLCipher with a versioned schema and forward-only migrations, all writes inside explicit transactions. Details are in `docs/DATABASE.md`.
+
+Dependency direction: `xopo-storage` depends on `xopo-core` (an adapter knows the application aggregate it persists), and `xopo-core` never depends on storage. That keeps the core free of SQLite and of I/O for the FFI build while still letting storage save and load a whole [`Vault`].
 
 ## Decisions
 

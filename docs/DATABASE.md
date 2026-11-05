@@ -1,8 +1,9 @@
 # Database
 
-> Status: **partly implemented (Phase 2).** The engine choice, encryption, schema v1, migrations,
-> integrity checks and the wallet/account/metadata repositories exist and are tested.
-> Repositories for assets, balances and transactions are still specification.
+> Status: **implemented for wallets, accounts, metadata and the whole-vault aggregate (Phase 2).**
+> The engine choice, encryption, schema v1, migrations and integrity checks exist and are tested.
+> Repositories for assets, balances and transactions arrive with the phases that produce that data
+> (chain adapters and market data); their tables exist, their access code does not.
 
 ## Engine and rules
 
@@ -177,9 +178,11 @@ around it is not.
 | Schema v1 (`m0001_initial.sql`), `user_version` guard, forward-only | Implemented and tested |
 | Pre-migration copy (`*.pre-migration.bak`) | Implemented, not covered by an automated test |
 | Wallet repository: transactional save, load, list, count, delete | Implemented and tested |
+| Whole-vault repository: atomic save of name, time and every wallet; rebuild on load | Implemented and tested |
 | Vault metadata repository | Implemented and tested |
+| Two connections writing the same file | Implemented and tested (WAL, `busy_timeout`) |
 | Asset, balance, transaction, device, sync, security-event, backup repositories | Specification only |
-| Concurrency test with two connections | Not written |
+| Automated test for the pre-migration copy | Not written (the copy itself is implemented) |
 
 Deviation from the original schema text: `wallets.key_ref` is nullable for every wallet kind. The key
 store does not exist before Phase 4, and a placeholder reference would claim a key is available when it
