@@ -118,7 +118,7 @@ Do not open a public issue for a security defect. Contact the maintainers privat
 | Capability | Status |
 | --- | --- |
 | Domain validation (labels, symbols, addresses, amounts, paths) | Implemented and tested |
-| Encrypted storage | Not implemented |
+| Encrypted storage (SQLCipher, key supplied by the caller) | Implemented and tested; key derivation and key store are Phase 4 |
 | Password KDF / AEAD / key hierarchy | Not implemented |
 | Application lock, auto-lock, biometrics | Not implemented |
 | `.xdvault` backup and restore | Not implemented |

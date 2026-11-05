@@ -1,6 +1,8 @@
 # Database
 
-> Status: **specification only.** The storage layer is Phase 2. Nothing in this document is implemented yet, and no database file is created by the current code.
+> Status: **partly implemented (Phase 2).** The engine choice, encryption, schema v1, migrations,
+> integrity checks and the wallet/account/metadata repositories exist and are tested.
+> Repositories for assets, balances and transactions are still specification.
 
 ## Engine and rules
 
@@ -148,16 +150,40 @@ CREATE TABLE backups (
 * A database that fails to open must never be replaced by a fresh empty one: losing data silently is worse than refusing to start.
 * Restoring from `.xdvault` is the documented recovery path.
 
-## Encryption — open decision
+## Encryption — decided: SQLCipher
 
-Two options, to be decided before Phase 2 code is written:
+**Decision (ADR-008): page-level SQLCipher with a raw 256-bit key supplied at open time.**
 
 | Option | Pros | Cons |
 | --- | --- | --- |
-| **SQLCipher** (page-level) | Whole file encrypted, including indexes and WAL; queries unchanged | Extra native build for Windows and Android; key must be supplied at open time |
-| **Application-level field encryption** | No native dependency; can encrypt only sensitive columns | Metadata (labels, counts) leaks; every query must handle ciphertext; easier to leak a column by mistake |
+| **SQLCipher** (chosen) | Whole file encrypted, including indexes and the WAL; queries unchanged; no column can be forgotten | Native build for Windows and Android; the key must be supplied at open time |
+| Application-level field encryption (rejected) | No native dependency; can encrypt only sensitive columns | Metadata (labels, counts) leaks; every query must handle ciphertext; one forgotten column silently leaks |
 
-The current preference is SQLCipher with a random DEK from the security layer, because it protects labels and structure as well as keys. The decision and its rationale will be recorded here and in `docs/ARCHITECTURE.md` before implementation.
+The reason is the failure mode: with field encryption, a single forgotten column leaks permanently and
+silently. With SQLCipher a mistake is loud (the file does not open). The cost is a native build, which is
+accepted and documented in `README.md`.
+
+The key itself is **not** produced here. `DatabaseKey` only wraps 32 bytes given by the security layer;
+Phase 4 adds the Argon2id-derived KEK and the random DEK, and passes the DEK to `Database::open`. Until
+then no password, key generation or key store exists — the encryption is real, but the key management
+around it is not.
+
+## Implementation status (Phase 2)
+
+| Piece | Status |
+| --- | --- |
+| SQLCipher file, key verification, WAL, foreign keys, `synchronous = FULL` | Implemented and tested |
+| `quick_check` on open, `foreign_key_check` after migrations | Implemented and tested |
+| Schema v1 (`m0001_initial.sql`), `user_version` guard, forward-only | Implemented and tested |
+| Pre-migration copy (`*.pre-migration.bak`) | Implemented, not covered by an automated test |
+| Wallet repository: transactional save, load, list, count, delete | Implemented and tested |
+| Vault metadata repository | Implemented and tested |
+| Asset, balance, transaction, device, sync, security-event, backup repositories | Specification only |
+| Concurrency test with two connections | Not written |
+
+Deviation from the original schema text: `wallets.key_ref` is nullable for every wallet kind. The key
+store does not exist before Phase 4, and a placeholder reference would claim a key is available when it
+is not. The constraint returns in a later migration.
 
 ## Test strategy
 

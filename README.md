@@ -4,9 +4,10 @@ A local-first, privacy-focused digital asset vault for **Windows** and **Android
 
 XoPo Vault is not a dashboard with a login screen. It is meant to be a personal digital vault: multiple networks, multiple wallets, real balances, encrypted local storage, encrypted `.xdvault` backups, and direct device-to-device synchronization over the local network — with no mandatory cloud.
 
-> **Development status: Phase 1 (Rust core foundation).**
-> The domain model, its validation rules and the in-memory vault aggregate are implemented and tested.
-> There is **no persistent storage, no encryption, no key derivation, no signing, no balance retrieval and no interface** yet.
+> **Development status: Phase 2 (encrypted storage).**
+> The domain model, its validation rules and the in-memory vault aggregate are implemented and tested,
+> and wallets/accounts now persist in a SQLCipher-encrypted SQLite file with versioned migrations.
+> There is still **no key derivation, no password handling, no signing, no balance retrieval and no interface**.
 > Do not use this project with real funds. Nothing in the current code can hold or move value.
 
 ## Principles
@@ -24,7 +25,8 @@ XoPo Vault is not a dashboard with a login screen. It is meant to be a personal 
 ├── Cargo.toml                  Rust workspace
 ├── crates/
 │   ├── xopo-domain/            Networks, assets, amounts, addresses, wallets, accounts
-│   └── xopo-core/              Application layer: vault aggregate
+│   ├── xopo-core/              Application layer: vault aggregate
+│   └── xopo-storage/           Encrypted SQLite: schema, migrations, repositories
 ├── platforms/                  Qt/C++ (Windows) and Kotlin (Android) — arrives with Phases 6–7
 ├── docs/
 │   ├── ARCHITECTURE.md         Layers, crate responsibilities, FFI boundary, decisions
@@ -41,7 +43,8 @@ XoPo Vault is not a dashboard with a login screen. It is meant to be a personal 
 
 ## Build and test
 
-Prerequisites: Rust stable (see `rust-toolchain.toml`), `rustfmt` and `clippy`.
+Prerequisites: Rust stable (see `rust-toolchain.toml`), `rustfmt`, `clippy`, and a C toolchain
+(`cc`, `make`, `perl`, `pkg-config`) because SQLCipher and its TLS dependency are built from source.
 
 ```bash
 cargo fmt --all --check
@@ -49,7 +52,8 @@ cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-No network service, database or platform SDK is required for the current phase.
+No network service or platform SDK is required for the current phase. The first build compiles SQLCipher
+and OpenSSL from source, which takes a few minutes; later builds reuse the artifacts.
 
 ## Documentation
 

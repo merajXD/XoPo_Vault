@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/xopo-domain", "crates/xopo-core"]
+members = ["crates/xopo-domain", "crates/xopo-core", "crates/xopo-storage"]
 
 [workspace.package]
 version = "0.1.0"
