@@ -1,6 +1,11 @@
 [workspace]
 resolver = "2"
-members = ["crates/xopo-domain", "crates/xopo-core", "crates/xopo-storage"]
+members = [
+    "crates/xopo-domain",
+    "crates/xopo-core",
+    "crates/xopo-storage",
+    "crates/xopo-wallet",
+]
 
 [workspace.package]
 version = "0.1.0"
@@ -15,6 +20,7 @@ description = "Local-first, privacy-focused digital asset vault"
 [workspace.dependencies]
 xopo-domain = { path = "crates/xopo-domain" }
 xopo-core = { path = "crates/xopo-core" }
+xopo-wallet = { path = "crates/xopo-wallet" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"

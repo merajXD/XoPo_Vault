@@ -1,0 +1,32 @@
+[package]
+name = "xopo-wallet"
+description = "XoPo Vault key sources: BIP-39 mnemonics, BIP-32 derivation and per-chain address encoding"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+xopo-domain = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+bip39 = { version = "2.2", features = ["zeroize"] }
+bitcoin = { version = "0.32.7", default-features = false, features = ["std", "secp-recovery"] }
+sha3 = "0.10"
+getrandom = "0.2"
+bs58 = { version = "0.5", features = ["check"] }
+zeroize = { version = "1.8", features = ["derive"] }
+
+[features]
+default = ["bitcoin", "ethereum", "litecoin"]
+bitcoin = []
+ethereum = []
+litecoin = []
+
+[dev-dependencies]
+hex = "0.4"
+
+[lints]
+workspace = true

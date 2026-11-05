@@ -9,7 +9,7 @@ Status is updated as work actually lands. A phase is complete only when it compi
 | 0 | Repository and architecture foundation | **Complete** |
 | 1 | Rust core foundation (domain model, validation, tests) | **Complete** |
 | 2 | Storage: SQLite schema, migrations, repositories | **Complete** (asset/balance/transaction repositories follow their data sources) |
-| 3 | Wallet architecture: HD derivation, watch-only, adapters trait | Planned |
+| 3 | Wallet architecture: HD derivation, watch-only, adapters trait | **In progress** |
 | 4 | Security and encrypted `.xdvault` backup | Planned |
 | 5 | Local pairing and synchronization | Planned |
 | 6 | Windows application (Qt/C++) | Planned |
@@ -70,17 +70,27 @@ No key generation, no mnemonic handling, no signing, no balances, no transaction
 
 Exit criteria: creating a vault, adding wallets/accounts, reopening the process and reading identical aggregates; a corrupt file produces a clear error, never an empty database. **Met**: four vault-level persistence tests cover it, and damaged files are rejected.
 
-## Phase 3 — Wallet architecture
+## Phase 3 — Wallet architecture — in progress
 
-- [ ] Key source abstraction (`xopo-wallet`): created, imported, watch-only.
-- [ ] BIP-39 mnemonic validation and checksum (using an audited crate).
-- [ ] BIP-32 derivation and BIP-44/84 account/address paths for Bitcoin, Ethereum, TON, Litecoin.
-- [ ] Address encoding with checksums per network, verified against published test vectors.
-- [ ] `ChainAdapter` trait: network info, address validation, balance query, history query, transaction construction (later).
-- [ ] Per-network adapters, independently feature-gated.
-- [ ] Test-vector suite checked in with sources.
+Implemented in `xopo-wallet` (29 tests, every address assertion copied from a published vector):
 
-Exit criteria: derived addresses match published vectors for each network; a watch-only wallet can never reach a signing path (enforced by types, not by a UI flag).
+- [x] Key source abstraction: created, imported, watch-only. `WatchOnlyAccount` has no method that returns a seed, key or signing path, so watch-only is enforced by types rather than a flag.
+- [x] BIP-39 generation and validation (English, 12–24 words, checksum) through the `bip39` crate; official Trezor vector #1 passes, seed is wiped on drop.
+- [x] BIP-32 master, account and child derivation through `rust-bitcoin`'s implementation, with paths from `xopo_domain::DerivationPath`.
+- [x] Bitcoin BIP-84: account keys, SLIP-132 `zprv`/`zpub`, first two receiving addresses and first change address match the BIP-84 vectors.
+- [x] Bitcoin BIP-44 legacy P2PKH encoding (round-trip tested; no independently published legacy vector in the suite yet).
+- [x] Ethereum addresses with EIP-55 checksum, matching the Hardhat derivation vector for `m/44'/60'/0'/0/{0,1,2}`.
+- [x] Litecoin BIP-44 P2PKH via Base58Check version `0x30`, matching the `bip_utils` vector for `m/44'/2'/0'/0/0`.
+- [x] Bitcoin testnet, signet and regtest address encoding with coin type `1'`.
+- [x] `ChainAdapter` trait plus Bitcoin, EVM and Litecoin adapters, each verifying the network's real checksum; feature-gated per chain.
+- [x] Test-vector suite checked in with its sources (`crates/xopo-wallet/tests/vectors.rs`).
+- [ ] TON: SLIP-0010 ed25519 derivation and the wallet-contract address format (`EQ…`/`UQ…`).
+- [ ] Litecoin BIP-84 bech32 (`ltc1…`) and Taproot (BIP-86).
+- [ ] `ChainAdapter` balance, history and transaction methods — they need network access, which arrives in Phases 8–9.
+- [ ] Wire key sources into `xopo-core` so a wallet created by the application stores its address and derivation path.
+- [ ] `NetworkId` has no testnet variants yet, so testnet addresses can be derived but not persisted or displayed as a network.
+
+Exit criteria: derived addresses match published vectors for each network; a watch-only wallet can never reach a signing path. **Partially met**: three networks pass published vectors and watch-only has no key path at all, but TON and the core wiring are still missing.
 
 ## Phase 4 — Security and backup
 
@@ -143,4 +153,6 @@ Exit criteria: label/preference changes propagate both ways over Wi-Fi; a revoke
 3. **Balance retrieval providers:** which RPC/indexer endpoints, and how the app avoids linking addresses to a single provider.
 4. **Sync of balances/history:** whether it is ever offered as an opt-in, and how the risk is communicated.
 5. **Iranian market data source:** which provider supplies USD/IRR, its licensing, and how rial/toman is presented by default.
+6. **TON wallet contract version:** TON addresses are the hash of a specific wallet contract (v4r2, v5r1, …); which one the vault derives must be fixed before TON support lands, because changing it later orphans addresses.
+7. **Testnet in the domain model:** whether `NetworkId` gains `bitcoin-testnet`-style variants, or testnet stays an adapter-level concern that is never persisted.
 6. **Licence:** currently MIT; confirm this is the intended distribution model for a commercial release.

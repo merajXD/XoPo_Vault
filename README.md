@@ -4,10 +4,12 @@ A local-first, privacy-focused digital asset vault for **Windows** and **Android
 
 XoPo Vault is not a dashboard with a login screen. It is meant to be a personal digital vault: multiple networks, multiple wallets, real balances, encrypted local storage, encrypted `.xdvault` backups, and direct device-to-device synchronization over the local network — with no mandatory cloud.
 
-> **Development status: Phase 2 complete (encrypted storage).**
-> The domain model and its validation rules are implemented and tested, and the whole vault — name,
-> wallets, accounts — persists in a SQLCipher-encrypted SQLite file with versioned migrations.
-> There is still **no key derivation, no password handling, no signing, no balance retrieval and no interface**.
+> **Development status: Phase 3 in progress (keys and addresses).**
+> The domain model, the vault aggregate and SQLCipher-encrypted persistence are implemented and tested.
+> `xopo-wallet` turns a BIP-39 phrase into BIP-32 keys and encodes Bitcoin (BIP-84 and BIP-44),
+> Ethereum (EIP-55) and Litecoin (BIP-44) addresses, checked against published test vectors.
+> There is still **no password handling, no signing, no balance retrieval and no interface**; mnemonic
+> storage is not wired into the vault, and TON has not started.
 > Do not use this project with real funds. Nothing in the current code can hold or move value, and the
 > key that unlocks the database must still be supplied by a caller that does not exist yet.
 
@@ -27,7 +29,8 @@ XoPo Vault is not a dashboard with a login screen. It is meant to be a personal 
 ├── crates/
 │   ├── xopo-domain/            Networks, assets, amounts, addresses, wallets, accounts
 │   ├── xopo-core/              Application layer: vault aggregate
-│   └── xopo-storage/           Encrypted SQLite: schema, migrations, repositories
+│   ├── xopo-storage/           Encrypted SQLite: schema, migrations, repositories
+│   └── xopo-wallet/            BIP-39/32 keys, address encoding, chain adapters
 ├── platforms/                  Qt/C++ (Windows) and Kotlin (Android) — arrives with Phases 6–7
 ├── docs/
 │   ├── ARCHITECTURE.md         Layers, crate responsibilities, FFI boundary, decisions
