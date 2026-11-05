@@ -1,0 +1,29 @@
+[workspace]
+resolver = "2"
+members = ["crates/xopo-domain", "crates/xopo-core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT"
+authors = ["XoPo Vault Contributors"]
+repository = "https://github.com/merajXD/XoPo_Vault"
+homepage = "https://github.com/merajXD/XoPo_Vault"
+description = "Local-first, privacy-focused digital asset vault"
+
+[workspace.dependencies]
+xopo-domain = { path = "crates/xopo-domain" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+uuid = { version = "1.10", features = ["v4", "serde"] }
+
+# Shared lint policy. Crates opt in with `[lints] workspace = true`.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+all = "warn"

@@ -1,0 +1,19 @@
+[package]
+name = "xopo-core"
+description = "XoPo Vault application core: vault aggregate over the domain model"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+xopo-domain = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

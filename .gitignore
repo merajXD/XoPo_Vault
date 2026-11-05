@@ -1,0 +1,57 @@
+# ---- Rust ----
+/target/
+**/target/
+*.rs.bk
+*.profraw
+
+# ---- C++ / Qt (Windows) ----
+/platforms/windows/build/
+/platforms/windows/out/
+/platforms/windows/CMakeUserPresets.json
+*.user
+*.user.*
+ui_*.h
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+
+# ---- Android / Gradle ----
+/platforms/android/.gradle/
+/platforms/android/build/
+/platforms/android/app/build/
+/platforms/android/local.properties
+/platforms/android/.cxx/
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# ---- IDE / editor ----
+/.idea/
+/.vscode/
+/.fleet/
+*.iml
+*.swp
+*~
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Secrets and local environment ----
+.env
+.env.*
+!.env.example
+!.env.template
+*.secret
+*.token
+secrets/
+
+# ---- User vault artifacts (never commit real user data) ----
+*.xdvault
+*.xdvault.tmp
+*.sqlite
+*.sqlite3
+*.db
+/dev-data/
