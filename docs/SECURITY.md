@@ -140,6 +140,7 @@ Do not open a public issue for a security defect. Contact the maintainers privat
 | Password KDF / AEAD / key hierarchy | Implemented and tested; the wrapped key sits in the sidecar and sealed secrets in schema v2 |
 | Vault lifecycle (create, unlock, add wallet, reveal, change password) | Implemented and tested end to end; no attempt throttling yet |
 | Developer CLI (`xopo`) | Implemented; a development tool, not the product interface |
+| Demo vault (`xopo demo`) | Implemented; public test vector and a generated password, no prompts |
 | Platform key protection (DPAPI, Android Keystore) | Not implemented |
 | Application lock, auto-lock, attempt throttling, biometrics | Not implemented |
 | `.xdvault` backup and restore | Not implemented |

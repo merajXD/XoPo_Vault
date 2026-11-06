@@ -96,6 +96,10 @@ cargo build -p xopo-cli
 ./target/debug/xopo passwd demo.xopo
 ```
 
+Want a vault to look at without typing anything? `xopo demo <directory>` builds a vault and one
+sample wallet from the public BIP-39 test vector, generates a password and prints it once. Nothing
+in that vault is real, so it is safe to keep and safe to delete.
+
 `wallet add --watch <address>` records a watch-only wallet instead, which has no phrase to reveal.
 The password prompt reads without echo. For scripted demos only, `XOPO_PASSWORD` and
 `XOPO_NEW_PASSWORD` can supply it; that is unsafe because a process environment is readable by the
@@ -137,6 +141,117 @@ error: wrong password, or the vault key file was damaged
 ```
 
 Both addresses match their published vectors, and the phrase does not appear in the database file.
+
+## Running it on Windows (PowerShell)
+
+Step by step, from a fresh Windows 10/11 x64 machine. The first build compiles SQLCipher and
+OpenSSL from source, so it takes several minutes and needs a C toolchain.
+
+**1. Install the C toolchain.** Rust on Windows needs the MSVC linker and the Windows SDK:
+
+```powershell
+winget install --id Microsoft.VisualStudio.2022.BuildTools -e
+```
+
+In the installer that opens, tick **Desktop development with C++** (that includes MSVC, the
+Windows SDK and `nmake`) and finish. Then open a **new** PowerShell window, because `PATH` only
+changes for new sessions.
+
+**2. Install Rust and Perl.** The vendored OpenSSL build uses Perl:
+
+```powershell
+winget install --id Rustlang.Rustup -e
+winget install --id StrawberryPerl.StrawberryPerl -e
+```
+
+Open PowerShell again and check:
+
+```powershell
+rustc --version
+cargo --version
+perl --version
+```
+
+**3. Get the code and build the CLI.**
+
+```powershell
+git clone https://github.com/merajXD/XoPo_Vault.git
+cd XoPo_Vault
+cargo build -p xopo-cli
+```
+
+If `cargo build` stops with a link error mentioning `link.exe`, step 1 is incomplete; re-run the
+Build Tools installer and make sure the C++ workload is selected. If it complains that `perl` is
+missing, reopen PowerShell after step 2.
+
+**4. Check the binary.**
+
+```powershell
+.\target\debug\xopo.exe --help
+```
+
+**5. Create a demo vault and wallet (nothing is prompted, nothing is real).**
+
+```powershell
+.\target\debug\xopo.exe demo .\demo
+```
+
+The output ends with a 64-character password and the commands to use next. Save that password in
+the same console for the following steps:
+
+```powershell
+.\target\debug\xopo.exe unlock .\demo\demo.xopo
+```
+
+It asks for the password without echoing it. Expect one wallet, two accounts, and the Bitcoin
+address `bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu`.
+
+**6. See a wrong password rejected.** Scripted checks use an environment variable, which is a demo
+shortcut only:
+
+```powershell
+$env:XOPO_PASSWORD = "definitely-wrong"
+.\target\debug\xopo.exe unlock .\demo\demo.xopo
+$LASTEXITCODE
+Remove-Item Env:XOPO_PASSWORD
+```
+
+`$LASTEXITCODE` prints `2`. The error is `wrong password, or the vault key file was damaged`, and
+no vault contents are printed.
+
+**7. Add a wallet from a public test phrase, list, show, change the password.**
+
+```powershell
+"abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" |
+  Set-Content -NoNewline .\phrase.txt
+
+.\target\debug\xopo.exe wallet add .\demo\demo.xopo --label "Second" --network bitcoin,ethereum --phrase-file .\phrase.txt
+.\target\debug\xopo.exe wallet list .\demo\demo.xopo
+.\target\debug\xopo.exe wallet show .\demo\demo.xopo --id <wallet-id> --phrase
+.\target\debug\xopo.exe passwd .\demo\demo.xopo
+```
+
+`wallet show --phrase` prints the phrase back from the encrypted vault; that is the intended
+behaviour and the reason the phrase is never stored as text.
+
+**8. Clean up.**
+
+```powershell
+Remove-Item -Recurse -Force .\demo, .\phrase.txt
+```
+
+### Notes for Windows
+
+* Defender or SmartScreen may warn about the locally built, unsigned `xopo.exe`. It was built from
+the source you just cloned.
+* The key file is written with mode `0600` on Unix only. On Windows it inherits the folder's ACLs,
+  so keep demo vaults inside your own profile rather than in a shared folder.
+* `passwd` rewrites the key file through a temporary file and a rename. That is tested on Linux; it
+  has not been exercised on Windows, so verify a password change once on your machine.
+* PowerShell's backtick is the line-continuation character, not `\`; keep the commands above on
+  one line each.
+* `XOPO_PASSWORD`, `XOPO_NEW_PASSWORD` and `--password` exist for scripted demos. A process
+  environment is readable by the same user, so never use them with a vault that matters.
 
 ## Documentation
 

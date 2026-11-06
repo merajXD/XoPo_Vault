@@ -18,6 +18,7 @@
 //! `0` success, `1` any other failure, `2` wrong password or damaged key file.
 
 use std::fmt;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -63,6 +64,21 @@ enum Command {
     Passwd {
         /// Path of the vault database.
         vault: PathBuf,
+    },
+    /// Build a ready-to-open demo vault with one sample wallet, no prompts.
+    ///
+    /// The wallet comes from the public BIP-39 test vector, never from a real
+    /// seed phrase, and the password is generated and printed once. This is the
+    /// quickest way to see a vault and its addresses on a new machine.
+    Demo {
+        /// Directory that will hold `demo.xopo` and `demo.xopo.key`.
+        directory: PathBuf,
+        /// Display name stored in the vault.
+        #[arg(long, default_value = "XoPo Demo Vault")]
+        name: String,
+        /// Password to use instead of generating one. Insecure; demos only.
+        #[arg(long)]
+        password: Option<String>,
     },
     /// Wallet commands.
     Wallet {
@@ -124,6 +140,11 @@ fn run(cli: Cli) -> Result<(), CliError> {
         Command::Init { vault, name } => init(vault, &name),
         Command::Unlock { vault } => unlock(vault),
         Command::Passwd { vault } => passwd(vault),
+        Command::Demo {
+            directory,
+            name,
+            password,
+        } => demo(directory, &name, password),
         Command::Wallet { action } => wallet(action),
     }
 }
@@ -181,6 +202,64 @@ fn passwd(vault: PathBuf) -> Result<(), CliError> {
     );
     handle.lock();
     Ok(())
+}
+
+/// Official BIP-39 English vector #1: public data, never a real wallet.
+const DEMO_PHRASE: &str =
+    "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+
+fn demo(directory: PathBuf, name: &str, password: Option<String>) -> Result<(), CliError> {
+    fs::create_dir_all(&directory).map_err(|error| {
+        CliError::Message(format!("cannot create {}: {error}", directory.display()))
+    })?;
+
+    let (password, generated) = match password {
+        Some(password) => (Zeroizing::new(password), false),
+        None => (Zeroizing::new(random_password()?), true),
+    };
+
+    let paths = VaultPaths::new(directory.join("demo.xopo"));
+    let mut handle = create_vault(paths, name, &password)?;
+    let added = handle.add_wallet(
+        KeySource::Imported(Mnemonic::parse(DEMO_PHRASE)?),
+        "Demo Wallet",
+        &[NetworkId::Bitcoin, NetworkId::Ethereum],
+    )?;
+
+    let database = handle.paths().database().display().to_string();
+    println!("Demo vault created.");
+    println!("  database : {database}");
+    println!("  key file : {}.key", database);
+    println!(
+        "  wallet   : {} ({})",
+        added.wallet_id(),
+        added.accounts().len()
+    );
+    println!();
+    if generated {
+        println!("Password for this demo vault, generated and shown only once:");
+        println!("  {}", password.as_str());
+        println!();
+    }
+    println!("The wallet uses the public BIP-39 test vector, not a real seed phrase.");
+    println!("Addresses are derived, so they hold nothing; do not send funds to them.");
+    println!();
+    println!("Next:");
+    println!("  xopo unlock {database}");
+    println!("  xopo wallet show {database} --id {}", added.wallet_id());
+    handle.lock();
+    Ok(())
+}
+
+/// A throwaway demo password from the OS random source, as 64 hex characters.
+fn random_password() -> Result<String, CliError> {
+    use std::fmt::Write as _;
+    let key = xopo_security::SecretKey::generate()?;
+    let mut text = String::with_capacity(64);
+    for byte in key.expose() {
+        let _ = write!(text, "{byte:02x}");
+    }
+    Ok(text)
 }
 
 fn wallet(action: WalletAction) -> Result<(), CliError> {
@@ -418,6 +497,12 @@ impl From<EngineError> for CliError {
 impl From<xopo_domain::DomainError> for CliError {
     fn from(error: xopo_domain::DomainError) -> Self {
         Self::Engine(EngineError::Domain(error))
+    }
+}
+
+impl From<xopo_security::SecurityError> for CliError {
+    fn from(error: xopo_security::SecurityError) -> Self {
+        Self::Engine(EngineError::Security(error))
     }
 }
 

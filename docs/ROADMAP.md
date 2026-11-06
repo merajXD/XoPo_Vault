@@ -97,6 +97,7 @@ Exit criteria: derived addresses match published vectors for each network; a wat
 - [x] `xopo-security`: Argon2id KDF with a parameter floor (19 MiB / two passes minimum, 64 MiB / three passes by default), ChaCha20-Poly1305 helpers, redacted and zeroized key buffers.
 - [x] Key hierarchy: password → KEK → random DEK; re-wrap on password change, with the envelope stored in a sidecar beside the database (it is what opens the database, so it cannot live inside it) and secrets sealed per context in `sealed_secrets` (schema v2).
 - [x] Developer CLI (`xopo-cli`, binary `xopo`): create a vault, unlock it, add a demo wallet with real derived addresses, seal and reveal its phrase, change the password, and read it all back after a restart. A development tool, not the product interface.
+- [x] Zero-input demo (`xopo demo`): builds a vault and one sample wallet from the public BIP-39 test vector under a generated password, so the project can be run on a fresh machine without any real secret.
 - [x] Vault lifecycle in `xopo-engine`: create, unlock, add wallet, reveal phrase, change password, with the ordering rules (derive, seal, save) and rollback tested end to end.
 - [ ] Platform key protection: DPAPI (Windows), Android Keystore (Android).
 - [ ] Application lock, auto-lock, failed-attempt throttling, security events.

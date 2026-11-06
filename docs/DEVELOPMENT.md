@@ -45,10 +45,15 @@ The `xopo` binary is a development tool, not the product interface. It runs the 
 future interfaces will use, against a real encrypted vault:
 
 ```bash
+./target/debug/xopo demo /tmp/demo            # vault + one sample wallet, no prompts
 ./target/debug/xopo init /tmp/demo.xopo --name "Demo Vault"
 ./target/debug/xopo wallet add /tmp/demo.xopo --label Demo --network bitcoin,ethereum --phrase-file phrase.txt
 ./target/debug/xopo unlock /tmp/demo.xopo
 ```
+
+`xopo demo` uses the public BIP-39 test vector and a generated password, so it never needs a real
+phrase. On Windows, `README.md` has the PowerShell steps, including the MSVC and Perl requirements
+for building SQLCipher and OpenSSL.
 
 Use only public test vectors as the phrase. `--help` lists every command; `README.md` shows a full
 session with its output.
