@@ -94,14 +94,17 @@ Exit criteria: derived addresses match published vectors for each network; a wat
 
 ## Phase 4 — Security and backup
 
-- [ ] `xopo-security`: Argon2id KDF with parameter policy, AEAD helpers, zeroized buffers.
-- [ ] Key hierarchy: password → KEK → random DEK; re-wrap on password change.
+- [x] `xopo-security`: Argon2id KDF with a parameter floor (19 MiB / two passes minimum, 64 MiB / three passes by default), ChaCha20-Poly1305 helpers, redacted and zeroized key buffers.
+- [x] Key hierarchy: password → KEK → random DEK; re-wrap on password change, with the envelope stored in `key_store` (schema v2) and secrets sealed per context. Still to come: a session that holds the data key, and the OS keystore that wraps it a second time.
 - [ ] Platform key protection: DPAPI (Windows), Android Keystore (Android).
 - [ ] Application lock, auto-lock, failed-attempt throttling, security events.
 - [ ] `.xdvault` writer/reader per `docs/BACKUP_FORMAT.md`, with full validation and restore planning.
 - [ ] Tamper and truncation test matrix; golden files.
 
 Exit criteria: a backup written on one platform restores on the other; every tampered byte is rejected; no secret is present in plaintext in the file or in logs.
+
+**Partially met**: the key hierarchy, its storage and the tamper tests exist, but there is no
+application lock, no platform key protection and no `.xdvault` backup yet.
 
 ## Phase 5 — Local synchronization
 

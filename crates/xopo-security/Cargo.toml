@@ -1,0 +1,20 @@
+[package]
+name = "xopo-security"
+description = "XoPo Vault security: Argon2id KDF, AEAD sealing, key hierarchy and password wrapping"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror = { workspace = true }
+argon2 = { version = "0.5", features = ["std"] }
+chacha20poly1305 = "0.10"
+getrandom = "0.2"
+zeroize = { version = "1.8", features = ["derive"] }
+subtle = "2.6"
+
+[lints]
+workspace = true

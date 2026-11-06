@@ -36,10 +36,10 @@ Dependencies point **downward only**. The domain has no dependency on storage, n
 | --- | --- | --- |
 | `xopo-domain` | Value objects and entities with validation: `NetworkId`, `Asset`, `Amount`, `Address`, `DerivationPath`, `Wallet`, `Account`, errors, timestamps. No I/O. | Implemented (Phase 1) |
 | `xopo-core` | Application layer: the `Vault` aggregate over wallets/accounts, plus `provision::create_wallet`, which derives addresses from a key source and only then writes the wallet. Later the use cases that coordinate storage, security, backup and sync. | Implemented (Phase 1–3 subset) |
-| `xopo-storage` | SQLCipher connection and key verification, versioned schema and migrations, whole-vault/wallet/account/metadata repositories, transactions, integrity checks. | Implemented (Phase 2) |
+| `xopo-storage` | SQLCipher connection and key verification, versioned schema and migrations, whole-vault/wallet/account/metadata repositories, transactions, integrity checks, key store. | Implemented (Phases 2–4 subset) |
 | `xopo-wallet` | BIP-39 mnemonics, BIP-32/SLIP-132 derivation, Bitcoin, Ethereum and Litecoin address encoding, key sources, chain adapters. Encodes and derives only; no signing, no storage. | Implemented (Phase 3, partial: TON and adapter network calls pending) |
 | `xopo-chain-adapters` | One independent adapter per network: address checksums, balance retrieval, transaction history, transaction construction. A shared `ChainAdapter` trait lives here. | Phase 3 and 8 |
-| `xopo-security` | Argon2id KDF, AEAD sealing/opening, key hierarchy, application lock, platform key protection, security events. | Phase 4 |
+| `xopo-security` | Argon2id KDF with a parameter floor, ChaCha20-Poly1305 sealing, password-wrapped random data key, per-context sealed secrets, zeroized key buffers. Application lock, platform key protection and security events are still ahead. | Implemented (Phase 4 subset) |
 | `xopo-backup` | `.xdvault` writing, parsing, validation and restore planning. | Phase 4 |
 | `xopo-sync` | Device identity, discovery, pairing, authenticated session, record exchange, conflict resolution, revocation. | Phase 5 |
 
@@ -62,7 +62,13 @@ unlock(password) -> session handle        // keys stay inside the security layer
 sign(wallet_id, payload) -> signature     // no key crosses the boundary
 ```
 
-The storage layout will keep only wrapped key material (AEAD ciphertexts) and metadata. Logs, error messages and DTOs are designed so that a secret has no path to them.
+The storage layout keeps only wrapped key material (AEAD ciphertexts) and metadata: `key_store`
+holds the 90-byte envelope that wraps the data key, and `sealed_secrets` holds one AEAD blob per
+context. `xopo-storage` never sees a password and cannot decrypt either table. Logs, error messages
+and DTOs are designed so that a secret has no path to them.
+
+The dependency direction is `xopo-security` → `xopo-domain`, and `xopo-storage` → `xopo-security`
+only to hand it the sealed types; the domain and the core never branch on cryptography.
 
 ## FFI boundary (Phases 6–7)
 

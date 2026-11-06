@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/xopo-domain",
     "crates/xopo-core",
+    "crates/xopo-security",
     "crates/xopo-storage",
     "crates/xopo-wallet",
 ]
@@ -21,6 +22,7 @@ description = "Local-first, privacy-focused digital asset vault"
 xopo-domain = { path = "crates/xopo-domain" }
 xopo-core = { path = "crates/xopo-core" }
 xopo-wallet = { path = "crates/xopo-wallet" }
+xopo-security = { path = "crates/xopo-security" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"

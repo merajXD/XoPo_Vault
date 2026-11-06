@@ -1,7 +1,8 @@
 # Database
 
-> Status: **implemented for wallets, accounts, metadata and the whole-vault aggregate (Phase 2).**
-> The engine choice, encryption, schema v1, migrations and integrity checks exist and are tested.
+> Status: **implemented through schema v2 (Phases 2–4).**
+> The engine choice, encryption, migrations and integrity checks exist and are tested for wallets,
+> accounts, metadata, the whole-vault aggregate and the security layer's key store.
 > Repositories for assets, balances and transactions arrive with the phases that produce that data
 > (chain adapters and market data); their tables exist, their access code does not.
 
@@ -13,7 +14,7 @@
 * Every write happens inside an explicit transaction. A repository method either completes or leaves the database untouched.
 * The schema version lives in `PRAGMA user_version`; migrations are forward-only, ordered, idempotent steps applied in one transaction each.
 
-## Planned schema (v1)
+## Schema v1 (implemented)
 
 Identifiers are UUIDv4 stored as `TEXT`. Timestamps are UTC milliseconds (`INTEGER`). Amounts are atomic units (`TEXT`, because `u128` exceeds SQLite's signed 64-bit range) plus the asset's decimals.
 
@@ -136,9 +137,38 @@ CREATE TABLE backups (
 );
 ```
 
+## Schema v2 — the key store (implemented)
+
+The security layer needs somewhere to keep its wrapped key and the secrets sealed with it. Both are
+opaque, already-authenticated blobs; the storage layer cannot decrypt either of them.
+
+```sql
+CREATE TABLE key_store (
+    id         TEXT PRIMARY KEY,             -- 'vault' for the single vault key
+    envelope   BLOB NOT NULL,                -- 90 bytes: password-wrapped data key
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE sealed_secrets (
+    context    TEXT PRIMARY KEY,             -- 'wallet:<uuid>'
+    payload    BLOB NOT NULL,                -- nonce || ciphertext
+    updated_at INTEGER NOT NULL
+);
+```
+
+* Re-wrapping the data key under a new password replaces `envelope` and keeps `created_at`, so the
+  vault is not reported as new after a password change.
+* Every blob is validated by `xopo-security` when it is read back; a row edited directly in the file
+  returns an explicit `InvalidRecord` error instead of being trusted.
+* The tables sit inside the SQLCipher file, so the key material is encrypted twice: by the database
+  key and by the password-derived key. Losing either one leaves the secrets unreadable.
+* `wallets.key_ref` is still nullable: nothing writes a reference yet, and a placeholder would claim
+  a key exists when it does not. The constraint returns once the creation flow sets it.
+
 ## Migrations
 
-* `xopo-storage/src/migrations/` holds ordered modules `m0001_initial`, `m0002_…`.
+* `xopo-storage/src/migrations/` holds ordered SQL scripts `m0001_initial`, `m0002_key_store`.
 * Each migration is a pure SQL script plus a Rust guard that asserts the expected starting `user_version`.
 * Applying migrations runs inside a single transaction; on failure the database is left at its previous version and the error is returned, never swallowed.
 * Downgrades are not supported. An older application refuses to open a database written by a newer schema and says so explicitly.
@@ -180,6 +210,8 @@ around it is not.
 | Wallet repository: transactional save, load, list, count, delete | Implemented and tested |
 | Whole-vault repository: atomic save of name, time and every wallet; rebuild on load | Implemented and tested |
 | Vault metadata repository | Implemented and tested |
+| Key store: wrapped data key and sealed secrets (schema v2) | Implemented and tested |
+| Key store recovery: `.xdvault` backup | Specification only (Phase 4) |
 | Two connections writing the same file | Implemented and tested (WAL, `busy_timeout`) |
 | Asset, balance, transaction, device, sync, security-event, backup repositories | Specification only |
 | Automated test for the pre-migration copy | Not written (the copy itself is implemented) |

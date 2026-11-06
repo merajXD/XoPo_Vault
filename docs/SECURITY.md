@@ -48,7 +48,7 @@ Established primitives and libraries only. No project-specific algorithms.
 
 Forbidden: MD5, SHA-1, DES/3DES, ECB mode, static IVs, password "encryption" with a hard-coded key, custom KDFs, custom hashing, steganography, "obfuscation" presented as encryption.
 
-## Key hierarchy (planned, Phase 4)
+## Key hierarchy (implemented, Phase 4 subset)
 
 ```text
 user password
@@ -67,6 +67,21 @@ vault records / .xdvault payload
 * Optional second factor: the KEK wrap is additionally protected by DPAPI (Windows) or a Keystore-backed key (Android). Losing the OS key must never silently destroy data — the restore path and backup remain the recovery route, and the UI must say so.
 * A successful unlock is proven by authenticating a verifier, not by comparing a stored hash with `==` in application code.
 * Keys live in memory only while unlocked; the buffers are zeroized on lock. Rust cannot guarantee the OS kept no copies, so this is documented as defence in depth, not a guarantee.
+
+### Envelope format (ADR-009)
+
+* Argon2id, version `0x13`. Policy floor: 19 MiB of memory, two passes, one lane; the default is
+  64 MiB and three passes. The parameters travel in the envelope and are re-checked when it is read,
+  so editing the header downwards is rejected before a weak key is ever derived.
+* ChaCha20-Poly1305 with a fresh 12-byte random nonce for every seal. The fixed 42-byte header is the
+  associated data, so any edit to the salts or parameters also fails authentication.
+* One envelope is exactly 90 bytes: magic, version, parameters, salt, nonce and a 32-byte data key
+  plus tag. The data key is random and generated once per vault, which is what makes a password
+  change a 90-byte rewrite.
+* A seed phrase is sealed separately with the data key and bound to its wallet identifier, so a blob
+  moved to another wallet fails to open instead of decrypting.
+* The envelope and the sealed secrets live in the `key_store` and `sealed_secrets` tables, inside the
+  SQLCipher file: the data is protected by the database key and by the password.
 
 ## Application lock
 
@@ -118,9 +133,10 @@ Do not open a public issue for a security defect. Contact the maintainers privat
 | Capability | Status |
 | --- | --- |
 | Domain validation (labels, symbols, addresses, amounts, paths) | Implemented and tested |
-| Encrypted storage (SQLCipher, key supplied by the caller) | Implemented and tested; key derivation and key store are Phase 4 |
-| Password KDF / AEAD / key hierarchy | Not implemented |
-| Application lock, auto-lock, biometrics | Not implemented |
+| Encrypted storage (SQLCipher, key supplied by the caller) | Implemented and tested |
+| Password KDF / AEAD / key hierarchy | Implemented and tested in memory; the wrapped key and sealed secrets are stored in schema v2 |
+| Platform key protection (DPAPI, Android Keystore) | Not implemented |
+| Application lock, auto-lock, attempt throttling, biometrics | Not implemented |
 | `.xdvault` backup and restore | Not implemented |
 | Device pairing and Local Sync | Not implemented |
 | Security Center UI reporting real checks | Not implemented |

@@ -8,7 +8,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use xopo_domain::{
     Address, DerivationPath, Label, NetworkId, Timestamp, Wallet, WalletId, WalletKind,
 };
-use xopo_storage::{Database, DatabaseKey, StorageError, VaultMeta, WalletRepository};
+use xopo_storage::{
+    Database, DatabaseKey, StorageError, VaultMeta, WalletRepository, SCHEMA_VERSION,
+};
 
 const KEY: [u8; 32] = [0x5a; 32];
 
@@ -233,9 +235,9 @@ fn an_unknown_network_in_storage_is_reported() {
 fn migrations_are_idempotent_and_record_their_version() {
     let vault = TempVault::new("migrate");
     let mut db = vault.open();
-    assert_eq!(db.schema_version().expect("version"), 1);
-    assert_eq!(db.migrate().expect("second migrate"), 1);
-    assert_eq!(db.schema_version().expect("version"), 1);
+    assert_eq!(db.schema_version().expect("version"), SCHEMA_VERSION);
+    assert_eq!(db.migrate().expect("second migrate"), SCHEMA_VERSION);
+    assert_eq!(db.schema_version().expect("version"), SCHEMA_VERSION);
     db.integrity_check().expect("integrity");
     db.foreign_key_check().expect("foreign keys");
 }
@@ -255,7 +257,7 @@ fn a_newer_schema_is_refused() {
         db.migrate(),
         Err(StorageError::SchemaTooNew {
             found: 99,
-            supported: 1
+            supported: SCHEMA_VERSION
         })
     ));
 }
