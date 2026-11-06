@@ -31,6 +31,27 @@ use zeroize::Zeroizing;
 /// Networks the provisioning path can derive today.
 const DERIVABLE: &str = "bitcoin, ethereum, litecoin";
 
+/// Writes one line to stdout, ignoring a closed pipe.
+///
+/// `println!` panics when stdout is gone, so `xopo unlock … | head` (or
+/// `| Select-Object -First 5`) ended in a panic message instead of a quiet exit.
+fn say(arguments: fmt::Arguments<'_>) {
+    use std::io::Write as _;
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+    let _ = out.write_fmt(arguments);
+    let _ = out.write_all(b"\n");
+}
+
+macro_rules! say {
+    () => {
+        say(format_args!(""))
+    };
+    ($($argument:tt)*) => {
+        say(format_args!($($argument)*))
+    };
+}
+
 #[derive(Parser)]
 #[command(
     name = "xopo",
@@ -160,17 +181,17 @@ fn init(vault: PathBuf, name: &str) -> Result<(), CliError> {
 
     let paths = VaultPaths::new(&vault);
     let handle = create_vault(paths, name, &password)?;
-    println!("Vault created.");
-    println!("  name      : {}", handle.vault().name());
-    println!("  database  : {}", handle.paths().database().display());
-    println!("  key file  : {}", handle.paths().key_file().display());
-    println!(
+    say!("Vault created.");
+    say!("  name      : {}", handle.vault().name());
+    say!("  database  : {}", handle.paths().database().display());
+    say!("  key file  : {}", handle.paths().key_file().display());
+    say!(
         "  schema    : v{}",
         handle.schema_version().unwrap_or_default()
     );
-    println!();
-    println!("The key file holds the data key wrapped with your password, using Argon2id");
-    println!("at its default parameters. Keep both files; either one alone is useless.");
+    say!();
+    say!("The key file holds the data key wrapped with your password, using Argon2id");
+    say!("at its default parameters. Keep both files; either one alone is useless.");
     handle.lock();
     Ok(())
 }
@@ -196,10 +217,8 @@ fn passwd(vault: PathBuf) -> Result<(), CliError> {
     }
 
     handle.change_password(&current, &new)?;
-    println!("Password changed.");
-    println!(
-        "Only the key envelope was rewritten; the vault and its sealed secrets are untouched."
-    );
+    say!("Password changed.");
+    say!("Only the key envelope was rewritten; the vault and its sealed secrets are untouched.");
     handle.lock();
     Ok(())
 }
@@ -227,26 +246,26 @@ fn demo(directory: PathBuf, name: &str, password: Option<String>) -> Result<(), 
     )?;
 
     let database = handle.paths().database().display().to_string();
-    println!("Demo vault created.");
-    println!("  database : {database}");
-    println!("  key file : {}.key", database);
-    println!(
+    say!("Demo vault created.");
+    say!("  database : {database}");
+    say!("  key file : {}.key", database);
+    say!(
         "  wallet   : {} ({})",
         added.wallet_id(),
         added.accounts().len()
     );
-    println!();
+    say!();
     if generated {
-        println!("Password for this demo vault, generated and shown only once:");
-        println!("  {}", password.as_str());
-        println!();
+        say!("Password for this demo vault, generated and shown only once:");
+        say!("  {}", password.as_str());
+        say!();
     }
-    println!("The wallet uses the public BIP-39 test vector, not a real seed phrase.");
-    println!("Addresses are derived, so they hold nothing; do not send funds to them.");
-    println!();
-    println!("Next:");
-    println!("  xopo unlock {database}");
-    println!("  xopo wallet show {database} --id {}", added.wallet_id());
+    say!("The wallet uses the public BIP-39 test vector, not a real seed phrase.");
+    say!("Addresses are derived, so they hold nothing; do not send funds to them.");
+    say!();
+    say!("Next:");
+    say!("  xopo unlock {database}");
+    say!("  xopo wallet show {database} --id {}", added.wallet_id());
     handle.lock();
     Ok(())
 }
@@ -308,10 +327,10 @@ fn add_wallet(
     };
 
     let added = handle.add_wallet(source, label, &networks)?;
-    println!("Wallet added.");
-    println!("  id       : {}", added.wallet_id());
-    println!("  accounts : {}", added.accounts().len());
-    println!(
+    say!("Wallet added.");
+    say!("  id       : {}", added.wallet_id());
+    say!("  accounts : {}", added.accounts().len());
+    say!(
         "  phrase   : {}",
         if added.sealed() {
             "sealed with the vault's data key"
@@ -346,17 +365,17 @@ fn show_wallet(vault: PathBuf, id: &str, reveal: bool) -> Result<(), CliError> {
         .find(|wallet| wallet.id() == wallet_id)
         .ok_or_else(|| CliError::Message(format!("no wallet with id {id}")))?;
 
-    println!("Wallet \"{}\"", wallet.label());
-    println!("  id       : {}", wallet.id());
-    println!("  kind     : {}", wallet.kind().display_name());
-    println!("  accounts : {}", wallet.account_count());
+    say!("Wallet \"{}\"", wallet.label());
+    say!("  id       : {}", wallet.id());
+    say!("  kind     : {}", wallet.kind().display_name());
+    say!("  accounts : {}", wallet.account_count());
     for account in wallet.accounts() {
-        println!();
-        println!("  account \"{}\"", account.label());
-        println!("    id      : {}", account.id());
-        println!("    network : {}", account.network());
-        println!("    address : {}", account.address().as_str());
-        println!(
+        say!();
+        say!("  account \"{}\"", account.label());
+        say!("    id      : {}", account.id());
+        say!("    network : {}", account.network());
+        say!("    address : {}", account.address().as_str());
+        say!(
             "    path    : {}",
             account
                 .derivation()
@@ -367,9 +386,9 @@ fn show_wallet(vault: PathBuf, id: &str, reveal: bool) -> Result<(), CliError> {
 
     if reveal {
         let phrase = handle.reveal_phrase(wallet_id)?;
-        println!();
-        println!("Recovery phrase (a secret; anyone who sees it owns this wallet):");
-        println!("{}", phrase.as_str());
+        say!();
+        say!("Recovery phrase (a secret; anyone who sees it owns this wallet):");
+        say!("{}", phrase.as_str());
     }
     handle.lock();
     Ok(())
@@ -377,10 +396,10 @@ fn show_wallet(vault: PathBuf, id: &str, reveal: bool) -> Result<(), CliError> {
 
 fn print_handle(handle: &VaultHandle) {
     let vault = handle.vault();
-    println!("Unlocked \"{}\"", vault.name());
-    println!("  wallets  : {}", vault.wallets().len());
-    println!("  accounts : {}", vault.account_count());
-    println!(
+    say!("Unlocked \"{}\"", vault.name());
+    say!("  wallets  : {}", vault.wallets().len());
+    say!("  accounts : {}", vault.account_count());
+    say!(
         "  schema   : v{}",
         handle.schema_version().unwrap_or_default()
     );
@@ -388,23 +407,23 @@ fn print_handle(handle: &VaultHandle) {
         print_wallet(wallet);
     }
     if vault.wallets().is_empty() {
-        println!();
-        println!("No wallets yet. Add one with:");
-        println!("  xopo wallet add <vault> --label Demo --network bitcoin,ethereum");
+        say!();
+        say!("No wallets yet. Add one with:");
+        say!("  xopo wallet add <vault> --label Demo --network bitcoin,ethereum");
     }
 }
 
 fn print_wallet(wallet: &Wallet) {
     let id = wallet.id().to_string();
-    println!();
-    println!(
+    say!();
+    say!(
         "  {}  \"{}\"  ({})",
         &id[..8.min(id.len())],
         wallet.label(),
         wallet.kind().display_name()
     );
     for account in wallet.accounts() {
-        println!(
+        say!(
             "    {:<9} {:<46} {}",
             account.network().to_string(),
             account.address().as_str(),
