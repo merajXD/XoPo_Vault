@@ -7,7 +7,9 @@ XoPo Vault is not a dashboard with a login screen. It is meant to be a personal 
 > **Development status: Phase 3 in progress (keys and addresses).**
 > The domain model, the vault aggregate and SQLCipher-encrypted persistence are implemented and tested.
 > `xopo-wallet` turns a BIP-39 phrase into BIP-32 keys and encodes Bitcoin (BIP-84 and BIP-44),
-> Ethereum (EIP-55) and Litecoin (BIP-44) addresses, checked against published test vectors.
+> Ethereum (EIP-55) and Litecoin (BIP-44) addresses, checked against published test vectors, and
+> `xopo-core` now creates a wallet, stores its real derived addresses and hands the key source back
+> to the caller.
 > There is still **no password handling, no signing, no balance retrieval and no interface**; mnemonic
 > storage is not wired into the vault, and TON has not started.
 > Do not use this project with real funds. Nothing in the current code can hold or move value, and the

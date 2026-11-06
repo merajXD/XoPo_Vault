@@ -9,7 +9,9 @@
 
 use std::str::FromStr;
 
-use bitcoin::{Address, CompressedPublicKey, Network};
+pub use bitcoin::Network;
+use bitcoin::{Address, CompressedPublicKey};
+
 use xopo_domain::NetworkId;
 
 use crate::error::WalletError;

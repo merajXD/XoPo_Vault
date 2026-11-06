@@ -20,6 +20,21 @@ pub enum VaultError {
     /// A domain value or invariant was violated.
     #[error(transparent)]
     Domain(#[from] DomainError),
+    /// The key layer could not derive or encode an address.
+    #[error(transparent)]
+    Wallet(#[from] xopo_wallet::WalletError),
+    /// The key layer has no address scheme for this network yet.
+    #[error("the key layer cannot derive addresses for {network} yet")]
+    UnsupportedNetwork {
+        /// The network that was requested.
+        network: NetworkId,
+    },
+    /// A signing wallet needs at least one account.
+    #[error("a signing wallet needs at least one account")]
+    NoAccounts,
+    /// A watch-only wallet is defined by the address it watches.
+    #[error("a watch-only wallet is created from its address and takes no account requests")]
+    WatchOnlyWithAccounts,
     /// No wallet with this identifier exists in the vault.
     #[error("wallet {wallet_id} was not found")]
     WalletNotFound {

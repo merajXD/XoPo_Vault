@@ -10,6 +10,7 @@ repository.workspace = true
 
 [dependencies]
 xopo-domain = { workspace = true }
+xopo-wallet = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]

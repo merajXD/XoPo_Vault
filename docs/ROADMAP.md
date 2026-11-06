@@ -87,10 +87,10 @@ Implemented in `xopo-wallet` (29 tests, every address assertion copied from a pu
 - [ ] TON: SLIP-0010 ed25519 derivation and the wallet-contract address format (`EQ…`/`UQ…`).
 - [ ] Litecoin BIP-84 bech32 (`ltc1…`) and Taproot (BIP-86).
 - [ ] `ChainAdapter` balance, history and transaction methods — they need network access, which arrives in Phases 8–9.
-- [ ] Wire key sources into `xopo-core` so a wallet created by the application stores its address and derivation path.
+- [x] Wire key sources into `xopo-core`: `provision::create_wallet` derives the first address of each requested network, validates it through the domain and writes the wallet only after every step succeeded, so a failure leaves the vault untouched. The key source is handed back to the caller, never stored in the vault.
 - [ ] `NetworkId` has no testnet variants yet, so testnet addresses can be derived but not persisted or displayed as a network.
 
-Exit criteria: derived addresses match published vectors for each network; a watch-only wallet can never reach a signing path. **Partially met**: three networks pass published vectors and watch-only has no key path at all, but TON and the core wiring are still missing.
+Exit criteria: derived addresses match published vectors for each network; a watch-only wallet can never reach a signing path. **Partially met**: three networks pass published vectors, watch-only has no key path at all, and the core now creates wallets with real derived addresses, but TON is still missing.
 
 ## Phase 4 — Security and backup
 

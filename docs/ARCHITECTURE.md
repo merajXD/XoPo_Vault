@@ -35,7 +35,7 @@ Dependencies point **downward only**. The domain has no dependency on storage, n
 | Crate | Responsibility | Status |
 | --- | --- | --- |
 | `xopo-domain` | Value objects and entities with validation: `NetworkId`, `Asset`, `Amount`, `Address`, `DerivationPath`, `Wallet`, `Account`, errors, timestamps. No I/O. | Implemented (Phase 1) |
-| `xopo-core` | Application layer: the `Vault` aggregate over wallets/accounts; later the use cases that coordinate storage, security, backup and sync. | Started (in-memory aggregate) |
+| `xopo-core` | Application layer: the `Vault` aggregate over wallets/accounts, plus `provision::create_wallet`, which derives addresses from a key source and only then writes the wallet. Later the use cases that coordinate storage, security, backup and sync. | Implemented (Phase 1–3 subset) |
 | `xopo-storage` | SQLCipher connection and key verification, versioned schema and migrations, whole-vault/wallet/account/metadata repositories, transactions, integrity checks. | Implemented (Phase 2) |
 | `xopo-wallet` | BIP-39 mnemonics, BIP-32/SLIP-132 derivation, Bitcoin, Ethereum and Litecoin address encoding, key sources, chain adapters. Encodes and derives only; no signing, no storage. | Implemented (Phase 3, partial: TON and adapter network calls pending) |
 | `xopo-chain-adapters` | One independent adapter per network: address checksums, balance retrieval, transaction history, transaction construction. A shared `ChainAdapter` trait lives here. | Phase 3 and 8 |
@@ -75,7 +75,7 @@ The storage layout will keep only wrapped key material (AEAD ciphertexts) and me
 
 SQLCipher with a versioned schema and forward-only migrations, all writes inside explicit transactions. Details are in `docs/DATABASE.md`.
 
-Dependency direction: `xopo-storage` depends on `xopo-core` (an adapter knows the application aggregate it persists), and `xopo-core` never depends on storage. `xopo-wallet` depends only on `xopo-domain`, so key handling can be swapped or isolated without touching persistence. That keeps the core free of SQLite and of I/O for the FFI build while still letting storage save and load a whole [`Vault`].
+Dependency direction: `xopo-storage` depends on `xopo-core` (an adapter knows the application aggregate it persists), and `xopo-core` never depends on storage. `xopo-wallet` depends only on `xopo-domain`, so key handling can be swapped or isolated without touching persistence, and `xopo-core` calls the key layer instead of deriving anything itself. The vault never stores a mnemonic: provisioning hands the key source back to the caller, which will be the security layer. That keeps the core free of SQLite and of I/O for the FFI build while still letting storage save and load a whole [`Vault`].
 
 ## Decisions
 
