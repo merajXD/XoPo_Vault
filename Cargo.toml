@@ -6,6 +6,8 @@ members = [
     "crates/xopo-security",
     "crates/xopo-storage",
     "crates/xopo-wallet",
+    "crates/xopo-engine",
+    "crates/xopo-cli",
 ]
 
 [workspace.package]
@@ -23,6 +25,9 @@ xopo-domain = { path = "crates/xopo-domain" }
 xopo-core = { path = "crates/xopo-core" }
 xopo-wallet = { path = "crates/xopo-wallet" }
 xopo-security = { path = "crates/xopo-security" }
+xopo-storage = { path = "crates/xopo-storage" }
+xopo-engine = { path = "crates/xopo-engine" }
+zeroize = { version = "1.8", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"

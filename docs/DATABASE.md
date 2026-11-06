@@ -137,19 +137,12 @@ CREATE TABLE backups (
 );
 ```
 
-## Schema v2 — the key store (implemented)
+## Schema v2 — sealed secrets (implemented)
 
-The security layer needs somewhere to keep its wrapped key and the secrets sealed with it. Both are
-opaque, already-authenticated blobs; the storage layer cannot decrypt either of them.
+The security layer needs somewhere to keep the payloads it seals with the vault's data key. They are
+opaque, already-authenticated blobs; the storage layer cannot decrypt them.
 
 ```sql
-CREATE TABLE key_store (
-    id         TEXT PRIMARY KEY,             -- 'vault' for the single vault key
-    envelope   BLOB NOT NULL,                -- 90 bytes: password-wrapped data key
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
-);
-
 CREATE TABLE sealed_secrets (
     context    TEXT PRIMARY KEY,             -- 'wallet:<uuid>'
     payload    BLOB NOT NULL,                -- nonce || ciphertext
@@ -157,18 +150,23 @@ CREATE TABLE sealed_secrets (
 );
 ```
 
-* Re-wrapping the data key under a new password replaces `envelope` and keeps `created_at`, so the
-  vault is not reported as new after a password change.
 * Every blob is validated by `xopo-security` when it is read back; a row edited directly in the file
   returns an explicit `InvalidRecord` error instead of being trusted.
-* The tables sit inside the SQLCipher file, so the key material is encrypted twice: by the database
-  key and by the password-derived key. Losing either one leaves the secrets unreadable.
+* The rows sit inside the SQLCipher file, so they are encrypted twice: by the database key and by the
+  data key. Losing either one leaves the secrets unreadable.
 * `wallets.key_ref` is still nullable: nothing writes a reference yet, and a placeholder would claim
   a key exists when it does not. The constraint returns once the creation flow sets it.
 
+### The wrapped data key lives outside the database
+
+An earlier draft of this schema put the 90-byte key envelope in a `key_store` table. That cannot
+work: the envelope holds the database key, so it could only be read after the database was already
+open — a cycle. The envelope therefore lives in `<vault>.key` beside the database, and schema v2
+keeps only `sealed_secrets`. No vault created outside the test suite ever used the earlier shape.
+
 ## Migrations
 
-* `xopo-storage/src/migrations/` holds ordered SQL scripts `m0001_initial`, `m0002_key_store`.
+* `xopo-storage/src/migrations/` holds ordered SQL scripts `m0001_initial`, `m0002_sealed_secrets`.
 * Each migration is a pure SQL script plus a Rust guard that asserts the expected starting `user_version`.
 * Applying migrations runs inside a single transaction; on failure the database is left at its previous version and the error is returned, never swallowed.
 * Downgrades are not supported. An older application refuses to open a database written by a newer schema and says so explicitly.
@@ -210,8 +208,8 @@ around it is not.
 | Wallet repository: transactional save, load, list, count, delete | Implemented and tested |
 | Whole-vault repository: atomic save of name, time and every wallet; rebuild on load | Implemented and tested |
 | Vault metadata repository | Implemented and tested |
-| Key store: wrapped data key and sealed secrets (schema v2) | Implemented and tested |
-| Key store recovery: `.xdvault` backup | Specification only (Phase 4) |
+| Sealed secrets (schema v2) and the sidecar key envelope | Implemented and tested |
+| Vault recovery: `.xdvault` backup | Specification only (Phase 4) |
 | Two connections writing the same file | Implemented and tested (WAL, `busy_timeout`) |
 | Asset, balance, transaction, device, sync, security-event, backup repositories | Specification only |
 | Automated test for the pre-migration copy | Not written (the copy itself is implemented) |

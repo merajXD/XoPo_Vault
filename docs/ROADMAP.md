@@ -95,7 +95,9 @@ Exit criteria: derived addresses match published vectors for each network; a wat
 ## Phase 4 — Security and backup
 
 - [x] `xopo-security`: Argon2id KDF with a parameter floor (19 MiB / two passes minimum, 64 MiB / three passes by default), ChaCha20-Poly1305 helpers, redacted and zeroized key buffers.
-- [x] Key hierarchy: password → KEK → random DEK; re-wrap on password change, with the envelope stored in `key_store` (schema v2) and secrets sealed per context. Still to come: a session that holds the data key, and the OS keystore that wraps it a second time.
+- [x] Key hierarchy: password → KEK → random DEK; re-wrap on password change, with the envelope stored in a sidecar beside the database (it is what opens the database, so it cannot live inside it) and secrets sealed per context in `sealed_secrets` (schema v2).
+- [x] Developer CLI (`xopo-cli`, binary `xopo`): create a vault, unlock it, add a demo wallet with real derived addresses, seal and reveal its phrase, change the password, and read it all back after a restart. A development tool, not the product interface.
+- [x] Vault lifecycle in `xopo-engine`: create, unlock, add wallet, reveal phrase, change password, with the ordering rules (derive, seal, save) and rollback tested end to end.
 - [ ] Platform key protection: DPAPI (Windows), Android Keystore (Android).
 - [ ] Application lock, auto-lock, failed-attempt throttling, security events.
 - [ ] `.xdvault` writer/reader per `docs/BACKUP_FORMAT.md`, with full validation and restore planning.
@@ -103,8 +105,9 @@ Exit criteria: derived addresses match published vectors for each network; a wat
 
 Exit criteria: a backup written on one platform restores on the other; every tampered byte is rejected; no secret is present in plaintext in the file or in logs.
 
-**Partially met**: the key hierarchy, its storage and the tamper tests exist, but there is no
-application lock, no platform key protection and no `.xdvault` backup yet.
+**Partially met**: the key hierarchy, its storage, an end-to-end vault lifecycle and a developer CLI
+exist and are tested, but there is no application lock, no platform key protection, no attempt
+throttling and no `.xdvault` backup yet.
 
 ## Phase 5 — Local synchronization
 

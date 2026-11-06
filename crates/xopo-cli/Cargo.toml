@@ -1,0 +1,25 @@
+[package]
+name = "xopo-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Developer CLI for the XoPo Vault engine (not the product interface)"
+
+[[bin]]
+name = "xopo"
+path = "src/main.rs"
+
+[dependencies]
+xopo-domain = { workspace = true }
+xopo-engine = { workspace = true }
+xopo-security = { workspace = true }
+xopo-wallet = { workspace = true }
+clap = { version = "4.5", features = ["derive"] }
+rpassword = "7.3"
+zeroize = { workspace = true }
+
+[lints]
+workspace = true

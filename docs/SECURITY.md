@@ -80,8 +80,11 @@ vault records / .xdvault payload
   change a 90-byte rewrite.
 * A seed phrase is sealed separately with the data key and bound to its wallet identifier, so a blob
   moved to another wallet fails to open instead of decrypting.
-* The envelope and the sealed secrets live in the `key_store` and `sealed_secrets` tables, inside the
-  SQLCipher file: the data is protected by the database key and by the password.
+* The envelope lives in a `…key` sidecar file beside the database, never inside it: the data key it
+  wraps is what opens the database, so an envelope stored in a table could never be read. The
+  sidecar is written through a temporary file and renamed, with mode `0600` on Unix.
+* Sealed secrets live in the `sealed_secrets` table inside the SQLCipher file, so they are protected
+  by the database key and by the data key. The envelope is protected by the password alone.
 
 ## Application lock
 
@@ -134,7 +137,9 @@ Do not open a public issue for a security defect. Contact the maintainers privat
 | --- | --- |
 | Domain validation (labels, symbols, addresses, amounts, paths) | Implemented and tested |
 | Encrypted storage (SQLCipher, key supplied by the caller) | Implemented and tested |
-| Password KDF / AEAD / key hierarchy | Implemented and tested in memory; the wrapped key and sealed secrets are stored in schema v2 |
+| Password KDF / AEAD / key hierarchy | Implemented and tested; the wrapped key sits in the sidecar and sealed secrets in schema v2 |
+| Vault lifecycle (create, unlock, add wallet, reveal, change password) | Implemented and tested end to end; no attempt throttling yet |
+| Developer CLI (`xopo`) | Implemented; a development tool, not the product interface |
 | Platform key protection (DPAPI, Android Keystore) | Not implemented |
 | Application lock, auto-lock, attempt throttling, biometrics | Not implemented |
 | `.xdvault` backup and restore | Not implemented |

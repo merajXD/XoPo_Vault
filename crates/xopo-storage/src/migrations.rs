@@ -16,7 +16,7 @@ use crate::error::StorageError;
 pub const SCHEMA_VERSION: u32 = 2;
 
 const M0001_INITIAL: &str = include_str!("../migrations/m0001_initial.sql");
-const M0002_KEY_STORE: &str = include_str!("../migrations/m0002_key_store.sql");
+const M0002_SEALED_SECRETS: &str = include_str!("../migrations/m0002_sealed_secrets.sql");
 
 /// Applies every migration between `current` and [`SCHEMA_VERSION`].
 pub(crate) fn apply(conn: &mut Connection, current: u32) -> Result<(), StorageError> {
@@ -26,7 +26,7 @@ pub(crate) fn apply(conn: &mut Connection, current: u32) -> Result<(), StorageEr
         transaction.execute_batch(M0001_INITIAL)?;
     }
     if current < 2 {
-        transaction.execute_batch(M0002_KEY_STORE)?;
+        transaction.execute_batch(M0002_SEALED_SECRETS)?;
     }
 
     // Written inside the transaction so the version can never disagree with the
@@ -45,6 +45,6 @@ mod tests {
         // Guard against bumping SCHEMA_VERSION without adding the migration.
         assert_eq!(SCHEMA_VERSION, 2);
         assert!(!M0001_INITIAL.trim().is_empty());
-        assert!(!M0002_KEY_STORE.trim().is_empty());
+        assert!(!M0002_SEALED_SECRETS.trim().is_empty());
     }
 }

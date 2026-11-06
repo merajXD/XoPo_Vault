@@ -36,7 +36,22 @@ cargo test -p xopo-domain address            # tests whose name matches
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all
 cargo doc --workspace --no-deps --open       # API documentation
+cargo build -p xopo-cli                      # the `xopo` developer CLI
 ```
+
+### Trying the core from the command line
+
+The `xopo` binary is a development tool, not the product interface. It runs the same engine calls the
+future interfaces will use, against a real encrypted vault:
+
+```bash
+./target/debug/xopo init /tmp/demo.xopo --name "Demo Vault"
+./target/debug/xopo wallet add /tmp/demo.xopo --label Demo --network bitcoin,ethereum --phrase-file phrase.txt
+./target/debug/xopo unlock /tmp/demo.xopo
+```
+
+Use only public test vectors as the phrase. `--help` lists every command; `README.md` shows a full
+session with its output.
 
 CI runs the same three checks (`fmt --check`, `clippy -D warnings`, `test`) on every push.
 

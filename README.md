@@ -10,11 +10,13 @@ XoPo Vault is not a dashboard with a login screen. It is meant to be a personal 
 > Ethereum (EIP-55) and Litecoin (BIP-44) addresses, checked against published test vectors, and
 > `xopo-core` creates a wallet, stores its real derived addresses and hands the key source back to the
 > caller.
-> `xopo-security` wraps a random data key under an Argon2id-derived key, seals individual secrets with
-> ChaCha20-Poly1305, and `xopo-storage` stores the wrapped key and the sealed secrets in schema v2.
+> `xopo-security` wraps a random data key under an Argon2id-derived key, seals each wallet's phrase
+> with ChaCha20-Poly1305, and `xopo-engine` + the `xopo` developer CLI now drive that end to end: create
+> a vault, unlock it, add a wallet with real derived addresses, reveal its phrase, change the password,
+> and read it all back after a restart.
 > There is still **no application lock, no `.xdvault` backup, no signing, no balance retrieval and no
-> interface**; a mnemonic is not yet stored by any flow, TON has not started, and platform key
-> protection (DPAPI, Android Keystore) is not implemented.
+> product interface**; TON has not started, and platform key protection (DPAPI, Android Keystore) is
+> not implemented.
 > Do not use this project with real funds. Nothing in the current code can hold or move value, the
 > code has not been independently reviewed, and the password is the only protection around the data
 > key once the database key has been supplied.
@@ -36,8 +38,10 @@ XoPo Vault is not a dashboard with a login screen. It is meant to be a personal 
 │   ├── xopo-domain/            Networks, assets, amounts, addresses, wallets, accounts
 │   ├── xopo-core/              Application layer: vault aggregate, wallet provisioning
 │   ├── xopo-security/          Argon2id KDF, AEAD sealing, key hierarchy
-│   ├── xopo-storage/           Encrypted SQLite: schema, migrations, repositories, key store
-│   └── xopo-wallet/            BIP-39/32 keys, address encoding, chain adapters
+│   ├── xopo-storage/           Encrypted SQLite: schema, migrations, repositories
+│   ├── xopo-wallet/            BIP-39/32 keys, address encoding, chain adapters
+│   ├── xopo-engine/            Vault lifecycle: create, unlock, add wallet, reveal, passwd
+│   └── xopo-cli/               Developer CLI (binary `xopo`), temporary tooling
 ├── platforms/                  Qt/C++ (Windows) and Kotlin (Android) — arrives with Phases 6–7
 ├── docs/
 │   ├── ARCHITECTURE.md         Layers, crate responsibilities, FFI boundary, decisions
@@ -65,6 +69,74 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 No network service or platform SDK is required for the current phase. The first build compiles SQLCipher
 and OpenSSL from source, which takes a few minutes; later builds reuse the artifacts.
+
+## Developer CLI (temporary)
+
+`xopo` exercises the real engine against a real encrypted vault: a real SQLCipher file, a real
+Argon2id envelope, real BIP-39/32 derivation and the sealed phrase. It is **not** the product
+interface and it must not be used with real funds.
+
+```bash
+cargo build -p xopo-cli
+
+# Create a vault (password is prompted twice, without echo)
+./target/debug/xopo init demo.xopo --name "Demo Vault"
+
+# Add a wallet from a phrase, on two networks (addresses are derived, not invented)
+./target/debug/xopo wallet add demo.xopo --label "Demo Wallet" \
+    --network bitcoin,ethereum --phrase-file phrase.txt
+
+# Read it back in a separate process: this proves persistence, not a cached form
+./target/debug/xopo unlock demo.xopo
+
+# Show one wallet, and optionally the sealed phrase
+./target/debug/xopo wallet show demo.xopo --id <wallet-id> --phrase
+
+# Change the password; only the 90-byte envelope is rewritten
+./target/debug/xopo passwd demo.xopo
+```
+
+`wallet add --watch <address>` records a watch-only wallet instead, which has no phrase to reveal.
+The password prompt reads without echo. For scripted demos only, `XOPO_PASSWORD` and
+`XOPO_NEW_PASSWORD` can supply it; that is unsafe because a process environment is readable by the
+same user. Exit code `2` means wrong password or damaged key file.
+
+A real run against the public BIP-39 test vector:
+
+```text
+$ xopo init demo.xopo --name "Demo Vault"
+Vault created.
+  name      : Demo Vault
+  database  : /tmp/xopo-demo/demo.xopo
+  key file  : /tmp/xopo-demo/demo.xopo.key
+  schema    : v2
+
+$ xopo wallet add demo.xopo --label "Demo Wallet" --network bitcoin,ethereum --phrase-file phrase.txt
+Wallet added.
+  id       : 7b240fe2-add8-45ec-9eaa-7f3a3148c4a4
+  accounts : 2
+  phrase   : sealed with the vault's data key
+Unlocked "Demo Vault"
+  wallets  : 1
+  accounts : 2
+  schema   : v2
+
+  7b240fe2  "Demo Wallet"  (Standard)
+    bitcoin   bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu     m/84'/0'/0'
+    ethereum  0x9858EfFD232B4033E47d90003D41EC34EcaEda94     m/44'/60'/0'
+
+$ xopo unlock demo.xopo
+Unlocked "Demo Vault"
+  wallets  : 1
+  accounts : 2
+...
+
+$ XOPO_PASSWORD=wrong xopo unlock demo.xopo; echo $?
+error: wrong password, or the vault key file was damaged
+2
+```
+
+Both addresses match their published vectors, and the phrase does not appear in the database file.
 
 ## Documentation
 

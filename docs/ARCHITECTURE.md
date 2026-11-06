@@ -40,6 +40,8 @@ Dependencies point **downward only**. The domain has no dependency on storage, n
 | `xopo-wallet` | BIP-39 mnemonics, BIP-32/SLIP-132 derivation, Bitcoin, Ethereum and Litecoin address encoding, key sources, chain adapters. Encodes and derives only; no signing, no storage. | Implemented (Phase 3, partial: TON and adapter network calls pending) |
 | `xopo-chain-adapters` | One independent adapter per network: address checksums, balance retrieval, transaction history, transaction construction. A shared `ChainAdapter` trait lives here. | Phase 3 and 8 |
 | `xopo-security` | Argon2id KDF with a parameter floor, ChaCha20-Poly1305 sealing, password-wrapped random data key, per-context sealed secrets, zeroized key buffers. Application lock, platform key protection and security events are still ahead. | Implemented (Phase 4 subset) |
+| `xopo-engine` | The only crate that wires core, storage and security together: create a vault, unlock it, add a wallet and seal its phrase, reveal it, change the password. Owns the sidecar key file and the ordering rules. | Implemented (Phase 4 subset) |
+| `xopo-cli` | Developer CLI, binary `xopo`. Argument parsing and readable output only; no vault rules. | Implemented (temporary development tool) |
 | `xopo-backup` | `.xdvault` writing, parsing, validation and restore planning. | Phase 4 |
 | `xopo-sync` | Device identity, discovery, pairing, authenticated session, record exchange, conflict resolution, revocation. | Phase 5 |
 
@@ -62,13 +64,15 @@ unlock(password) -> session handle        // keys stay inside the security layer
 sign(wallet_id, payload) -> signature     // no key crosses the boundary
 ```
 
-The storage layout keeps only wrapped key material (AEAD ciphertexts) and metadata: `key_store`
-holds the 90-byte envelope that wraps the data key, and `sealed_secrets` holds one AEAD blob per
-context. `xopo-storage` never sees a password and cannot decrypt either table. Logs, error messages
-and DTOs are designed so that a secret has no path to them.
+The storage layout keeps only wrapped key material (AEAD ciphertexts) and metadata: `sealed_secrets`
+holds one AEAD blob per context inside the encrypted file, and the 90-byte envelope that wraps the
+data key sits in a sidecar `<vault>.key` — inside the file it opens, it could never be read.
+`xopo-storage` never sees a password and cannot decrypt anything. Logs, error messages and DTOs are
+designed so that a secret has no path to them.
 
-The dependency direction is `xopo-security` → `xopo-domain`, and `xopo-storage` → `xopo-security`
-only to hand it the sealed types; the domain and the core never branch on cryptography.
+The dependency direction is `xopo-security` → `xopo-domain`, `xopo-storage` → `xopo-security` only to
+hand it the sealed types, and `xopo-engine` → (core, storage, security). The domain and the core
+never branch on cryptography, and the CLI depends on the engine alone.
 
 ## FFI boundary (Phases 6–7)
 
